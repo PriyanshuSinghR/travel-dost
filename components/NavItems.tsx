@@ -1,14 +1,8 @@
 import { Link, NavLink } from "react-router";
-import { sidebarItems } from "~/constants";
+import { sidebarItems, user } from "~/constants";
 import { cn } from "~/lib/utils";
 
 const NavItems = ({ handleClick }: { handleClick?: () => void }) => {
-  const user = {
-    name: "Priyanshu Singh",
-    email: "priyanshu@example.com",
-    imageUrl: "/assets/images/david.webp",
-  };
-
   const handleLogout = () => {
     console.log("Logout");
   };
