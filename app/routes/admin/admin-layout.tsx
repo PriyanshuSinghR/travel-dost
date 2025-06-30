@@ -1,6 +1,25 @@
-import { Outlet } from "react-router";
+import { Outlet, redirect } from "react-router";
 import { SidebarComponent } from "@syncfusion/ej2-react-navigations";
-import { MobileSidebar, NavItems } from "components";
+import { MobileSidebar, NavItems } from "../../../components";
+import { account } from "~/appwrite/client";
+import { getExistingUser, storeUserData } from "~/appwrite/auth";
+
+export async function clientLoader() {
+  try {
+    const user = await account.get();
+    if (!user.$id) return redirect("/sign-in");
+
+    const existingUser = await getExistingUser(user.$id);
+    console.log(existingUser);
+    if (existingUser?.status === "user") {
+      return redirect("/");
+    }
+    return existingUser?.$id ? existingUser : await storeUserData();
+  } catch (e) {
+    console.log("Error in clientLoader", e);
+    return redirect("/sign-in");
+  }
+}
 
 const AdminLayout = () => {
   return (
@@ -19,5 +38,4 @@ const AdminLayout = () => {
     </div>
   );
 };
-
 export default AdminLayout;

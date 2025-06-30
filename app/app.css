@@ -38,7 +38,7 @@
   --color-red-50: #fff4ed;
   --color-red-100: #ff543d;
 
-  --background-image-auth: url("/assets/images/auth-img.webp");
+  --background-image-auth: url("/assets/images/auth-img.jpg");
   --background-image-hero: url("/assets/images/hero-img.png");
   --background-image-card-1: url("/assets/images/card-img-1.png");
   --background-image-card-2: url("/assets/images/card-img-2.png");
@@ -186,6 +186,20 @@
 
   .all-users {
     @apply w-full min-h-screen  flex flex-col gap-10;
+  }
+
+  .auth {
+    @apply w-full h-screen flex bg-auth bg-cover bg-no-repeat;
+  }
+
+  .sign-in-card {
+    @apply flex bg-white flex-col border border-light-100 md:max-w-[510px] rounded-[20px] py-10 px-6 w-full;
+    header {
+      @apply flex items-center gap-1.5 justify-center;
+    }
+    article {
+      @apply mt-9 mb-[30px] flex flex-col gap-3;
+    }
   }
 }
 
