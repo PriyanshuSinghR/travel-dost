@@ -1,10 +1,15 @@
-import { Link, NavLink } from "react-router";
+import { Link, NavLink, useLoaderData, useNavigate } from "react-router";
+import { logoutUser } from "~/appwrite/auth";
 import { sidebarItems, user } from "~/constants";
-import { cn } from "~/lib/utils";
+import { capitalizeWords, cn } from "~/lib/utils";
 
 const NavItems = ({ handleClick }: { handleClick?: () => void }) => {
-  const handleLogout = () => {
-    console.log("Logout");
+  const user = useLoaderData();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logoutUser();
+    navigate("/sign-in");
   };
 
   return (
@@ -47,7 +52,7 @@ const NavItems = ({ handleClick }: { handleClick?: () => void }) => {
           />
 
           <article>
-            <h2>{user?.name}</h2>
+            <h2>{capitalizeWords(user?.name)}</h2>
             <p>{user?.email}</p>
           </article>
 

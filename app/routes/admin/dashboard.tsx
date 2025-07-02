@@ -1,11 +1,17 @@
 import { Header, StatsCard, TripCard } from "components";
+import { getUser } from "~/appwrite/auth";
 import { allTrips, dashboardStats, user } from "~/constants";
+import type { Route } from "./+types/dashboard";
+import { capitalizeWords } from "~/lib/utils";
 
-const Dashboard = () => {
+export const clientLoader = async () => await getUser();
+
+const Dashboard = ({ loaderData }: Route.ComponentProps) => {
+  const user = loaderData as User | null;
   return (
     <main className="dashboard wrapper">
       <Header
-        title={`Welcome ${user?.name ?? "Guest"} 👋`}
+        title={`Welcome ${capitalizeWords(user?.name) ?? "Guest"} 👋`}
         description="Track activity, trends and popular destinations in real time"
       />
       <section className="flex flex-col gap-6">

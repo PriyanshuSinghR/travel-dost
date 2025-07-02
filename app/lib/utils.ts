@@ -30,3 +30,15 @@ export const calculateTrendPercentage = (
 export function getFirstWord(input: string = ""): string {
   return input.trim().split(/\s+/)[0] || "";
 }
+
+export function capitalizeWords(str: string | null | undefined): string {
+  if (!str || typeof str !== "string") {
+    return "";
+  }
+
+  return str
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
