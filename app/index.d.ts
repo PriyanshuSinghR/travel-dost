@@ -33,3 +33,23 @@ declare interface UserData extends BaseUser {
 }
 
 declare type User = BaseUser;
+
+declare interface Country {
+  name: string;
+  coordinates: [number, number];
+  value: string;
+  openStreetMap?: string;
+}
+
+declare interface CreateTripResponse {
+  id?: string;
+}
+
+declare interface TripFormData {
+  country: string;
+  travelStyle: string;
+  interest: string;
+  budget: string;
+  duration: number;
+  groupType: string;
+}
