@@ -72,3 +72,14 @@ declare interface Trip {
   location: Location;
   payment_link: string;
 }
+
+declare interface DayPlan {
+  day: number;
+  location: string;
+  activities: Activity[];
+}
+
+declare interface InfoPillProps {
+  text: string;
+  image: string;
+}
