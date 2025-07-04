@@ -83,3 +83,41 @@ declare interface InfoPillProps {
   text: string;
   image: string;
 }
+
+declare interface DashboardStats {
+  totalUsers: number;
+  usersJoined: {
+    currentMonth: number;
+    lastMonth: number;
+  };
+  userRole: {
+    total: number;
+    currentMonth: number;
+    lastMonth: number;
+  };
+  totalTrips: number;
+  tripsCreated: {
+    currentMonth: number;
+    lastMonth: number;
+  };
+}
+
+declare interface UsersItineraryCount {
+  imageUrl: string;
+  name: string;
+  count: number;
+}
+
+declare interface DestinationProps {
+  containerClass?: string;
+  bigCard?: boolean;
+  activityCount: number;
+  rating: number;
+  bgImage: string;
+  title: string;
+}
+
+declare interface Activity {
+  time: string;
+  description: string;
+}

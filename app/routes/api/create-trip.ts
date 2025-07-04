@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { parseMarkdownToJson, parseTripData } from "~/lib/utils";
 import { appwriteConfig, database } from "~/appwrite/client";
 import { ID } from "appwrite";
+import { createProduct } from "~/lib/stripe";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const {
@@ -89,6 +90,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         createdAt: new Date().toISOString(),
         imageUrls,
         userId,
+      }
+    );
+
+    const tripDetail = parseTripData(result.tripDetails) as Trip;
+    const tripPrice = parseInt(tripDetail.estimatedPrice.replace("$", ""), 10);
+    const paymentLink = await createProduct(
+      tripDetail.name,
+      tripDetail.description,
+      imageUrls,
+      tripPrice,
+      result.$id
+    );
+
+    await database.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.tripCollectionId,
+      result.$id,
+      {
+        payment_link: paymentLink.url,
       }
     );
 

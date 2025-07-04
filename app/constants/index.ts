@@ -1,4 +1,5 @@
 import { formatDate } from "~/lib/utils";
+import type { AxisModel } from "@syncfusion/ej2-react-charts";
 
 export const sidebarItems = [
   {
@@ -205,3 +206,43 @@ export const comboBoxItems = {
   interest: interests,
   budget: budgetOptions,
 } as Record<keyof TripFormData, string[]>;
+
+export const userXAxis: AxisModel = { valueType: "Category", title: "Day" };
+export const useryAxis: AxisModel = {
+  minimum: 0,
+  maximum: 10,
+  interval: 2,
+  title: "Count",
+};
+
+export const tripXAxis: AxisModel = {
+  valueType: "Category",
+  title: "Travel Styles",
+  majorGridLines: { width: 0 },
+};
+
+export const tripyAxis: AxisModel = {
+  minimum: 0,
+  maximum: 10,
+  interval: 2,
+  title: "Count",
+};
+
+export const CONFETTI_SETTINGS = {
+  particleCount: 200,
+  spread: 60,
+  colors: ["#ff0", "#ff7f00", "#ff0044", "#4c94f4", "#f4f4f4"],
+  decay: 0.95,
+};
+
+export const LEFT_CONFETTI = {
+  ...CONFETTI_SETTINGS,
+  angle: 45,
+  origin: { x: 0, y: 1 },
+};
+
+export const RIGHT_CONFETTI = {
+  ...CONFETTI_SETTINGS,
+  angle: 135,
+  origin: { x: 1, y: 1 },
+};

@@ -8,8 +8,7 @@ import {
   ChipListComponent,
   ChipsDirective,
 } from "@syncfusion/ej2-react-buttons";
-import { Header, TripCard } from "components";
-import InfoPill from "components/InfoPill";
+import { Header, InfoPill, TripCard } from "components";
 
 export const loader = async ({ params }: LoaderFunctionArgs) => {
   const { tripId } = params;
@@ -171,7 +170,7 @@ const TripDetail = ({ loaderData }: Route.ComponentProps) => {
               </h3>
 
               <ul>
-                {dayPlan.activities.map((activity, index: number) => (
+                {dayPlan.activities.map((activity: Activity, index: number) => (
                   <li key={index}>
                     <span className="flex-shring-0 p-18-semibold">
                       {activity.time}
