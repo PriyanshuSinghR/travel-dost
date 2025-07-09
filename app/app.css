@@ -498,6 +498,19 @@
   }
 }
 
+html,
+body {
+  font-family: "Figtree", sans-serif;
+  background-color: #f9fbfc;
+  scroll-behavior: smooth;
+}
+
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
 .e-grid,
 .e-table {
   border-color: #eef9ff !important;

@@ -47,6 +47,8 @@ declare interface CreateTripResponse {
 
 declare interface TripFormData {
   country: string;
+  state: string;
+  city: string;
   travelStyle: string;
   interest: string;
   budget: string;

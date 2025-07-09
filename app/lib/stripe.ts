@@ -18,7 +18,7 @@ export const createProduct = async (
   const priceObject = await stripe.prices.create({
     product: product.id,
     unit_amount: price * 100,
-    currency: "usd",
+    currency: "inr",
   });
 
   const paymentLink = await stripe.paymentLinks.create({
@@ -30,6 +30,13 @@ export const createProduct = async (
         url: `${process.env.VITE_BASE_URL}/travel/${tripId}/success`,
       },
     },
+    custom_text: {
+      submit: {
+        message:
+          "🧪 DEMO MODE: Use test card 4242 4242 4242 4242, any future date, any CVC",
+      },
+    },
+    billing_address_collection: "auto",
   });
 
   return paymentLink;
