@@ -8,6 +8,10 @@ import { createProduct } from "~/lib/stripe";
 export const action = async ({ request }: ActionFunctionArgs) => {
   const {
     country,
+    state,
+    city,
+    currency,
+    currencySymbol,
     numberOfDays,
     travelStyle,
     interests,
@@ -20,21 +24,37 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const unsplashApiKey = process.env.UNSPLASH_ACCESS_KEY!;
 
   try {
-    const prompt = `Generate a ${numberOfDays}-day travel itinerary for ${country} based on the following user information:
+    let locationString = country;
+    if (state) {
+      locationString += `, ${state}`;
+    }
+    if (city) {
+      locationString += `, ${city}`;
+    }
+    const prompt = `Generate a ${numberOfDays}-day travel itinerary for ${locationString} based on the following user information:
         Budget: '${budget}'
         Interests: '${interests}'
         TravelStyle: '${travelStyle}'
         GroupType: '${groupType}'
+        Currency: '${currency}'
+        CurrencySymbol: '${currencySymbol}'
+        ${state ? `State/Region: '${state}'` : ""}
+        ${city ? `City: '${city}'` : ""}
+        
         Return the itinerary and lowest estimated price in a clean, non-markdown JSON format with the following structure:
         {
         "name": "A descriptive title for the trip",
         "description": "A brief description of the trip and its highlights not exceeding 100 words",
-        "estimatedPrice": "Lowest average price for the trip in USD, e.g.$price",
+        "estimatedPrice": "Lowest average price for the trip in ${currency}, e.g.${currencySymbol}price",
         "duration": ${numberOfDays},
         "budget": "${budget}",
         "travelStyle": "${travelStyle}",
         "country": "${country}",
-        "interests": ${interests},
+        "state": "${state || ""}",
+        "city": "${city || ""}",
+        "currency": "${currency}",
+        "currencySymbol": "${currencySymbol}",
+        "interests": "${interests}",
         "groupType": "${groupType}",
         "bestTimeToVisit": [
           '🌸 Season (from month to month): reason to visit',
@@ -49,14 +69,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           '❄️ Season: temperature range in Celsius (temperature range in Fahrenheit)'
         ],
         "location": {
-          "city": "name of the city or region",
+          "city": "${city || state || country}",
           "coordinates": [latitude, longitude],
           "openStreetMap": "link to open street map"
         },
         "itinerary": [
         {
           "day": 1,
-          "location": "City/Region Name",
+          "location": "${city || state || country}",
           "activities": [
             {"time": "Morning", "description": "🏰 Visit the local historic castle and enjoy a scenic walk"},
             {"time": "Afternoon", "description": "🖼️ Explore a famous art museum with a guided tour"},
@@ -94,7 +114,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
 
     const tripDetail = parseTripData(result.tripDetails) as Trip;
-    const tripPrice = parseInt(tripDetail.estimatedPrice.replace("$", ""), 10);
+    const tripPrice = parseInt(
+      tripDetail.estimatedPrice
+        .replace(new RegExp(`\\${currencySymbol}`, "g"), "")
+        .replace(/,/g, ""),
+      10
+    );
     const paymentLink = await createProduct(
       tripDetail.name,
       tripDetail.description,

@@ -49,6 +49,8 @@ declare interface TripFormData {
   country: string;
   state: string;
   city: string;
+  currency: string;
+  currencySymbol: string;
   travelStyle: string;
   interest: string;
   budget: string;

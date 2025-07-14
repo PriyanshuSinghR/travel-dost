@@ -1,104 +1,241 @@
 import { ComboBoxComponent } from "@syncfusion/ej2-react-dropdowns";
-import type { Route } from "./+types/create-trip";
 import { comboBoxItems, selectItems } from "~/constants";
 import { cn, capitalizeWords } from "~/lib/utils";
 import {
   LayerDirective,
   LayersDirective,
   MapsComponent,
-  Marker,
-  MarkerDirective,
-  MarkersDirective,
   Inject,
-  Marker as MarkerService,
   Zoom,
 } from "@syncfusion/ej2-react-maps";
-import React, { useEffect, useState, useRef } from "react";
-import { world_map } from "~/constants/world_map";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import worldMap from "~/constants/world_map.json";
 import { ButtonComponent } from "@syncfusion/ej2-react-buttons";
 import { account } from "~/appwrite/client";
 import { useNavigate } from "react-router";
 import { Header } from "components";
 import { cityList } from "~/constants/country_city";
 
-const CreateTrip = ({ loaderData }: Route.ComponentProps) => {
-  const countries = cityList.map((country: any) => ({
-    name: country.emoji + country.name,
-    coordinates: [country.latitude, country.longitude],
-    value: country.name,
-    latitude: parseFloat(country.latitude),
-    longitude: parseFloat(country.longitude),
-  })) as Country[];
+const DEFAULT_MAP_CONFIG = {
+  zoomSettings: {
+    enable: true,
+    maxZoom: 10,
+    minZoom: 1,
+    zoomOnClick: false,
+    mouseWheelZoom: false,
+    doubleClickZoom: false,
+    pinchZooming: false,
+    toolbars: [],
+  },
+  centerPosition: { latitude: 20, longitude: 0 },
+  shapeSettings: {
+    fill: "#E5E5E5",
+    colorValuePath: "color",
+    colorMapping: [{ value: "highlight", color: "#EA382E" }],
+  },
+};
 
+const INITIAL_FORM_DATA = {
+  country: "",
+  state: "",
+  city: "",
+  currency: "",
+  currencySymbol: "",
+  travelStyle: "",
+  interest: "",
+  budget: "",
+  duration: 0,
+  groupType: "",
+};
+
+const REQUIRED_FIELDS = [
+  "country",
+  "currency",
+  "travelStyle",
+  "interest",
+  "budget",
+  "groupType",
+  "duration",
+];
+
+const CreateTrip = () => {
   const navigate = useNavigate();
   const mapRef = useRef<MapsComponent>(null);
 
-  const [formData, setFormData] = useState<TripFormData>({
-    country: "",
-    state: "",
-    city: "",
-    travelStyle: "",
-    interest: "",
-    budget: "",
-    duration: 0,
-    groupType: "",
-  });
+  const [formData, setFormData] = useState<TripFormData>(INITIAL_FORM_DATA);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [states, setStates] = useState([]);
-  const [cities, setCities] = useState([]);
-  const [mapConfig, setMapConfig] = useState({
-    zoomSettings: {
-      enable: false, // Disable user zoom control
-      zoomFactor: 1,
-      centerPosition: { latitude: 0, longitude: 0 },
-      maxZoom: 10,
-      minZoom: 1,
-      shouldZoomInitially: true,
-      enablePanning: false, // Disable panning
-      enableSelectionZooming: false, // Disable selection zooming
+
+  const countries = useMemo(
+    () =>
+      cityList.map((country: any) => ({
+        name: country.emoji + country.name,
+        text: country.emoji + country.name,
+        value: country.name,
+        latitude: parseFloat(country.latitude),
+        longitude: parseFloat(country.longitude),
+        currency: country.currency,
+        currencySymbol: country.currency_symbol,
+      })),
+    []
+  );
+
+  const allCurrencies = useMemo(() => {
+    const currencyMap = new Map<string, string>();
+    cityList.forEach((country) => {
+      if (country.currency && country.currency_symbol) {
+        currencyMap.set(country.currency, country.currency_symbol);
+      }
+    });
+
+    return Array.from(currencyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([currency, symbol]) => ({
+        text: `${symbol} ${currency}`,
+        value: currency,
+        symbol: symbol,
+      }));
+  }, []);
+
+  const { states, cities, selectedCountry, selectedState } = useMemo(() => {
+    const selectedCountry = cityList.find((c) => c.name === formData.country);
+    const selectedState = selectedCountry?.states?.find(
+      (s) => s.name === formData.state
+    );
+
+    const states =
+      selectedCountry?.states?.map((s) => ({
+        text: s.name,
+        value: s.name,
+      })) || [];
+
+    const cities =
+      selectedState?.cities?.map((c) => ({
+        text: c.name,
+        value: c.name,
+      })) || [];
+
+    return { states, cities, selectedCountry, selectedState };
+  }, [formData.country, formData.state]);
+
+  const mapConfig = useMemo(() => {
+    const config = {
+      ...DEFAULT_MAP_CONFIG,
+      zoomSettings: {
+        ...DEFAULT_MAP_CONFIG.zoomSettings,
+        zoomFactor: 1,
+      },
+      centerPosition: { latitude: 20, longitude: 0 },
+    };
+
+    const dataSource = [];
+
+    if (formData.country) {
+      dataSource.push({ name: formData.country, color: "highlight" });
+
+      if (formData.state && selectedState && selectedCountry) {
+        config.zoomSettings.zoomFactor = 4;
+        config.centerPosition = {
+          latitude: selectedCountry?.latitude
+            ? parseFloat(selectedCountry.latitude)
+            : 20,
+          longitude: selectedCountry?.longitude
+            ? parseFloat(selectedCountry.longitude)
+            : 0,
+        };
+      }
+    }
+
+    return {
+      ...config,
+      dataSource,
+      layerConfig: {
+        shapeData: worldMap,
+        shapePropertyPath: "name",
+        shapeDataPath: "name",
+        dataSource,
+        shapeSettings: DEFAULT_MAP_CONFIG.shapeSettings,
+      },
+    };
+  }, [formData.country, formData.state, selectedCountry, selectedState]);
+
+  const handleChange = useCallback(
+    (key: keyof TripFormData, value: string | number) => {
+      setFormData((prev) => {
+        const newData = { ...prev, [key]: value };
+
+        if (key === "country") {
+          newData.state = "";
+          newData.city = "";
+          const selectedCountry = countries.find((c) => c.value === value);
+          if (selectedCountry?.currency) {
+            newData.currency = selectedCountry.currency;
+            newData.currencySymbol = selectedCountry.currencySymbol;
+          }
+        } else if (key === "state") {
+          newData.city = "";
+        } else if (key === "currency") {
+          const selectedCurrency = allCurrencies.find((c) => c.value === value);
+          if (selectedCurrency?.symbol) {
+            newData.currencySymbol = selectedCurrency.symbol;
+          }
+        }
+
+        return newData;
+      });
     },
-    mapData: [],
-    shapeData: world_map,
-    markers: [],
-  });
+    [countries, allCurrencies]
+  );
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
+  const validateForm = useCallback(() => {
+    const missingFields = REQUIRED_FIELDS.filter((field) => !formData[field]);
 
-    if (
-      !formData.country ||
-      !formData.travelStyle ||
-      !formData.interest ||
-      !formData.budget ||
-      !formData.groupType
-    ) {
-      setError("Please provide values for all fields");
-      setLoading(false);
-      return;
+    if (missingFields.length > 0) {
+      return "Please provide values for all required fields";
     }
 
     if (formData.duration < 1 || formData.duration > 10) {
-      setError("Duration must be between 1 and 10 days");
-      setLoading(false);
-      return;
+      return "Duration must be between 1 and 10 days";
     }
-    const user = await account.get();
-    if (!user.$id) {
-      console.error("User not authenticated");
-      setLoading(false);
+
+    return null;
+  }, [formData]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
+      const user = await account.get();
+      if (!user.$id) {
+        throw new Error("User not authenticated");
+      }
+
       const response = await fetch("/api/create-trip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           country: formData.country,
+          state: formData.state || "",
+          city: formData.city || "",
           numberOfDays: formData.duration,
           travelStyle: formData.travelStyle,
+          currency: formData.currency,
+          currencySymbol: formData.currencySymbol,
           interests: formData.interest,
           budget: formData.budget,
           groupType: formData.groupType,
@@ -108,210 +245,108 @@ const CreateTrip = ({ loaderData }: Route.ComponentProps) => {
 
       const result: CreateTripResponse = await response.json();
 
-      if (result?.id) navigate(`/trips/${result.id}`);
-      else console.error("Failed to generate a trip");
-    } catch (e) {
-      console.error("Error generating trip", e);
+      if (result?.id) {
+        navigate(`/trips/${result.id}`);
+      } else {
+        throw new Error("Failed to generate a trip");
+      }
+    } catch (error) {
+      console.error("Error generating trip:", error);
+      setError("Failed to generate trip. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (key: keyof TripFormData, value: string | number) => {
-    setFormData({ ...formData, [key]: value });
+  const isRequiredField = (fieldId: string) => {
+    return REQUIRED_FIELDS.includes(fieldId);
   };
 
-  const getCountryShapeData = (countryName: string) => {
-    const countryFeatures = world_map.features?.filter(
-      (feature) =>
-        feature.properties.name === countryName ||
-        feature.properties.NAME === countryName ||
-        feature.properties.name_en === countryName
-    );
+  const FormLabel = ({
+    htmlFor,
+    children,
+    required = false,
+  }: {
+    htmlFor: string;
+    children: React.ReactNode;
+    required?: boolean;
+  }) => (
+    <label htmlFor={htmlFor}>
+      {children}
+      {required && (
+        <span style={{ color: "#EA382E", marginLeft: "4px" }}>*</span>
+      )}
+    </label>
+  );
 
-    if (countryFeatures && countryFeatures.length > 0) {
-      return {
-        ...world_map,
-        features: countryFeatures,
-      };
-    }
-
-    return world_map;
-  };
-
-  const getStateShapeData = (countryName: string, stateName: string) => {
-    const countryShapeData = getCountryShapeData(countryName);
-    const modifiedFeatures = countryShapeData.features?.map((feature) => {
-      return {
-        ...feature,
-        properties: {
-          ...feature.properties,
-          state: stateName,
-          name: stateName, // This will be used for matching
-        },
-      };
-    });
-
-    return {
-      ...countryShapeData,
-      features: modifiedFeatures || [],
-    };
-  };
-
-  //   const getStateShapeData = (countryName: string, stateName: string) => {
-  //     return getCountryShapeData(countryName);
-  //   };
-
-  const updateMapConfiguration = () => {
-    const selectedCountry = cityList.find((c) => c.name === formData.country);
-    const selectedState = selectedCountry?.states?.find(
-      (s) => s.name === formData.state
-    );
-    const selectedCity = selectedState?.cities?.find(
-      (c) => c.name === formData.city
-    );
-
-    let newConfig = {
-      zoomSettings: {
-        enable: false,
-        zoomFactor: 1,
-        centerPosition: { latitude: 0, longitude: 0 },
-        maxZoom: 10,
-        minZoom: 1,
-        shouldZoomInitially: true,
-        enablePanning: false,
-        enableSelectionZooming: false,
-      },
-      mapData: [],
-      shapeData: world_map,
-      markers: [],
+  const ComboBox = ({
+    id,
+    label,
+    dataSource,
+    placeholder,
+    value,
+    filterFn,
+    isCurrency = false,
+  }: {
+    id: keyof TripFormData;
+    label: string;
+    dataSource: { text: string; value: string; symbol?: string }[];
+    placeholder: string;
+    value: string;
+    filterFn?: (items: any[], query: string) => any[];
+    isCurrency?: boolean;
+  }) => {
+    const itemTemplate = (data: any) => {
+      if (isCurrency && data.symbol) {
+        return (
+          <div>
+            (
+            <span style={{ color: "#EA382E", fontWeight: "bold" }}>
+              {data.symbol}
+            </span>
+            )<span> {data.value}</span>
+          </div>
+        );
+      }
+      return <div>{data.text}</div>;
     };
 
-    if (formData.city && selectedCity && selectedState && selectedCountry) {
-      // City selected - zoom to state area using state's lat/long, show city marker in red
-      newConfig = {
-        ...newConfig,
-        zoomSettings: {
-          ...newConfig.zoomSettings,
-          zoomFactor: 8,
-          centerPosition: {
-            latitude: parseFloat(selectedState.latitude),
-            longitude: parseFloat(selectedState.longitude),
-          },
-        },
-        shapeData: getCountryShapeData(formData.country),
-        mapData: [
-          {
-            name: formData.state,
-            color: "#E5E5E5", // State in light gray
-          },
-        ],
-        markers: [
-          {
-            latitude: parseFloat(selectedCity.latitude),
-            longitude: parseFloat(selectedCity.longitude),
-            name: selectedCity.name,
-            color: "#EA382E",
-          },
-        ],
-      };
-    } else if (formData.state && selectedState && selectedCountry) {
-      // State selected - zoom to country area using country's lat/long, show state in red
-      newConfig = {
-        ...newConfig,
-        zoomSettings: {
-          ...newConfig.zoomSettings,
-          zoomFactor: 5,
-          centerPosition: {
-            latitude: parseFloat(selectedCountry.latitude),
-            longitude: parseFloat(selectedCountry.longitude),
-          },
-        },
-        shapeData: getStateShapeData(formData.country, formData.state),
-        mapData: [
-          {
-            name: formData.state,
-            color: "#EA382E", // State in red
-          },
-        ],
-        markers: [],
-      };
-    } else if (formData.country && selectedCountry) {
-      // Country selected - show country colored on world map
-      newConfig = {
-        ...newConfig,
-        zoomSettings: {
-          ...newConfig.zoomSettings,
-          zoomFactor: 3,
-          centerPosition: {
-            latitude: parseFloat(selectedCountry.latitude),
-            longitude: parseFloat(selectedCountry.longitude),
-          },
-        },
-        shapeData: world_map,
-        mapData: [
-          {
-            name: formData.country,
-            color: "#EA382E", // Country in red
-          },
-        ],
-        markers: [],
-      };
-    }
-
-    setMapConfig(newConfig);
+    return (
+      <div>
+        <FormLabel htmlFor={id} required={isRequiredField(id)}>
+          {label}
+        </FormLabel>
+        <ComboBoxComponent
+          id={id}
+          dataSource={dataSource}
+          fields={{ text: "text", value: "value" }}
+          placeholder={placeholder}
+          className="combo-box"
+          value={value}
+          change={(e: { value: string | undefined }) => {
+            if (e.value) handleChange(id, e.value);
+          }}
+          allowFiltering
+          filtering={(e) => {
+            const query = e.text.toLowerCase();
+            const filtered = filterFn
+              ? filterFn(dataSource, query)
+              : dataSource.filter((item) =>
+                  item.text.toLowerCase().includes(query)
+                );
+            e.updateData(filtered);
+          }}
+          itemTemplate={isCurrency ? itemTemplate : undefined}
+        />
+      </div>
+    );
   };
-
-  const countryData = countries.map((country) => ({
-    text: country.name,
-    value: country.value,
-  }));
 
   useEffect(() => {
-    const getStates = () => {
-      const selectedCountry = cityList.find((c) => c.name === formData.country);
-      setStates(
-        selectedCountry?.states?.map((s) => ({
-          text: s.name,
-          value: s.name,
-          latitude: s.latitude,
-          longitude: s.longitude,
-        })) || []
-      );
+    return () => {
+      mapRef.current?.destroy?.();
     };
-
-    getStates();
-    if (formData.state) {
-      setFormData((prev) => ({ ...prev, state: "", city: "" }));
-    }
-  }, [formData.country]);
-
-  useEffect(() => {
-    const getCities = () => {
-      const selectedCountry = cityList.find((c) => c.name === formData.country);
-      const selectedState = selectedCountry?.states?.find(
-        (s) => s.name === formData.state
-      );
-
-      setCities(
-        selectedState?.cities?.map((c) => ({
-          text: c.name,
-          value: c.name,
-          latitude: c.latitude,
-          longitude: c.longitude,
-        })) || []
-      );
-    };
-
-    getCities();
-    if (formData.city) {
-      setFormData((prev) => ({ ...prev, city: "" }));
-    }
-  }, [formData.state]);
-
-  useEffect(() => {
-    updateMapConfiguration();
-  }, [formData.country, formData.state, formData.city]);
+  }, []);
 
   return (
     <main className="flex flex-col gap-10 pb-20 wrapper">
@@ -322,213 +357,111 @@ const CreateTrip = ({ loaderData }: Route.ComponentProps) => {
 
       <section className="mt-2.5 wrapper-md">
         <form className="trip-form" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="country">Country</label>
-            <ComboBoxComponent
-              id="country"
-              dataSource={countryData}
-              fields={{ text: "text", value: "value" }}
-              placeholder="Select a Country"
-              className="combo-box"
-              value={formData.country}
-              change={(e: { value: string | undefined }) => {
-                if (e.value) {
-                  handleChange("country", e.value);
-                }
-              }}
-              allowFiltering
-              filtering={(e) => {
-                const query = e.text.toLowerCase();
+          <ComboBox
+            id="country"
+            label="Country"
+            dataSource={countries}
+            placeholder="Select a Country"
+            value={formData.country}
+            filterFn={(items, query) =>
+              items.filter((item) => item.text.toLowerCase().includes(query))
+            }
+          />
 
-                e.updateData(
-                  countries
-                    .filter((country) =>
-                      country.name.toLowerCase().includes(query)
-                    )
-                    .map((country) => ({
-                      text: country.name,
-                      value: country.value,
-                    }))
-                );
-              }}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="State">State</label>
-            <ComboBoxComponent
-              id="State"
+          {formData.country && states.length > 0 && (
+            <ComboBox
+              id="state"
+              label="State"
               dataSource={states}
-              fields={{ text: "text", value: "value" }}
               placeholder="Select a State"
-              className="combo-box"
               value={formData.state}
-              change={(e: { value: string | undefined }) => {
-                if (e.value) {
-                  handleChange("state", e.value);
-                }
-              }}
-              allowFiltering
-              filtering={(e) => {
-                const query = e.text.toLowerCase();
-
-                e.updateData(
-                  states
-                    .filter((state) => state.text.toLowerCase().includes(query))
-                    .map((state) => ({
-                      text: state.text,
-                      value: state.value,
-                    }))
-                );
-              }}
             />
-          </div>
+          )}
 
-          <div>
-            <label htmlFor="City">City</label>
-            <ComboBoxComponent
-              id="City"
+          {formData.state && cities.length > 0 && (
+            <ComboBox
+              id="city"
+              label="City"
               dataSource={cities}
-              fields={{ text: "text", value: "value" }}
               placeholder="Select a City"
-              className="combo-box"
               value={formData.city}
-              change={(e: { value: string | undefined }) => {
-                if (e.value) {
-                  handleChange("city", e.value);
-                }
-              }}
-              allowFiltering
-              filtering={(e) => {
-                const query = e.text.toLowerCase();
-
-                e.updateData(
-                  cities
-                    .filter((city) => city.text.toLowerCase().includes(query))
-                    .map((city) => ({
-                      text: city.text,
-                      value: city.value,
-                    }))
-                );
-              }}
             />
-          </div>
+          )}
 
           <div>
-            <label htmlFor="duration">Duration</label>
+            <FormLabel htmlFor="duration" required={true}>
+              Duration
+            </FormLabel>
             <input
               id="duration"
               name="duration"
               type="number"
+              min="1"
+              max="10"
               placeholder="Enter a number of days"
               className="form-input placeholder:text-gray-100"
+              value={formData.duration || ""}
               onChange={(e) => handleChange("duration", Number(e.target.value))}
             />
           </div>
 
+          {formData.country && (
+            <ComboBox
+              id="currency"
+              label="Currency"
+              dataSource={allCurrencies}
+              placeholder="Select Currency"
+              value={formData.currency}
+              filterFn={(items, query) =>
+                items.filter((item) => item.text.toLowerCase().includes(query))
+              }
+              isCurrency={true}
+            />
+          )}
+
           {selectItems.map((key) => (
-            <div key={key}>
-              <label htmlFor={key}>{capitalizeWords(key)}</label>
-
-              <ComboBoxComponent
-                id={key}
-                dataSource={comboBoxItems[key].map((item) => ({
-                  text: item,
-                  value: item,
-                }))}
-                fields={{ text: "text", value: "value" }}
-                placeholder={`Select ${capitalizeWords(key)}`}
-                change={(e: { value: string | undefined }) => {
-                  if (e.value) {
-                    handleChange(key, e.value);
-                  }
-                }}
-                allowFiltering
-                filtering={(e) => {
-                  const query = e.text.toLowerCase();
-
-                  e.updateData(
-                    comboBoxItems[key]
-                      .filter((item) => item.toLowerCase().includes(query))
-                      .map((item) => ({
-                        text: item,
-                        value: item,
-                      }))
-                  );
-                }}
-                className="combo-box"
-              />
-            </div>
+            <ComboBox
+              key={key}
+              id={key}
+              label={capitalizeWords(key)}
+              dataSource={comboBoxItems[key].map((item) => ({
+                text: item,
+                value: item,
+              }))}
+              placeholder={`Select ${capitalizeWords(key)}`}
+              value={formData[key]}
+              filterFn={(items, query) =>
+                items.filter((item) => item.text.toLowerCase().includes(query))
+              }
+            />
           ))}
 
           <div>
-            <label htmlFor="location">Location on the world map</label>
-            <MapsComponent
-              ref={mapRef}
-              zoomSettings={mapConfig.zoomSettings}
-              centerPosition={mapConfig.zoomSettings.centerPosition}
-              enablePersistence={false}
-              allowImageExport={false}
-              allowPdfExport={false}
-              allowPrint={false}
-              height="400px"
-              width="100%"
+            <FormLabel htmlFor="location" required={false}>
+              Location on the world map
+            </FormLabel>
+            <div
+              style={{ height: "400px", width: "100%", pointerEvents: "none" }}
             >
-              <Inject services={[MarkerService, Zoom]} />
-              <LayersDirective>
-                <LayerDirective
-                  shapeData={mapConfig.shapeData}
-                  dataSource={mapConfig.mapData}
-                  shapePropertyPath="name"
-                  shapeDataPath="name"
-                  animationDuration={500}
-                  shapeSettings={{
-                    colorValuePath: "color",
-                    fill: "#E5E5E5",
-                    border: { color: "#C0C0C0", width: 0.5 },
-                    colorMapping: [
-                      {
-                        value: "#EA382E",
-                        color: "#EA382E",
-                      },
-                      {
-                        value: "#E5E5E5",
-                        color: "#E5E5E5",
-                      },
-                    ],
-                  }}
-                  selectionSettings={{
-                    enable: false, // Disable selection
-                  }}
-                  highlightSettings={{
-                    enable: false, // Disable highlight
-                  }}
-                />
-              </LayersDirective>
-
-              {mapConfig.markers.length > 0 && (
-                <MarkersDirective>
-                  {mapConfig.markers.map((marker, index) => (
-                    <MarkerDirective
-                      key={index}
-                      visible={true}
-                      latitude={marker.latitude}
-                      longitude={marker.longitude}
-                      shape="Circle"
-                      fill="#EA382E"
-                      height={15}
-                      width={15}
-                      border={{ color: "#FFFFFF", width: 3 }}
-                      animationDuration={300}
-                      tooltipSettings={{
-                        visible: true,
-                        template: `<div style="background: #333; color: white; padding: 8px; border-radius: 4px; font-size: 12px;">${marker.name}</div>`,
-                      }}
-                    />
-                  ))}
-                </MarkersDirective>
-              )}
-            </MapsComponent>
+              <MapsComponent
+                ref={mapRef}
+                key={`${formData.country}-${formData.state}`}
+                zoomSettings={mapConfig.zoomSettings}
+                centerPosition={mapConfig.centerPosition}
+                height="400px"
+                width="100%"
+                enablePersistence={false}
+                enableRtl={false}
+                allowImageExport={false}
+                allowPdfExport={false}
+                allowPrint={false}
+              >
+                <Inject services={[Zoom]} />
+                <LayersDirective>
+                  <LayerDirective {...mapConfig.layerConfig} />
+                </LayersDirective>
+              </MapsComponent>
+            </div>
           </div>
 
           <div className="bg-gray-200 h-px w-full" />
@@ -538,6 +471,7 @@ const CreateTrip = ({ loaderData }: Route.ComponentProps) => {
               <p>{error}</p>
             </div>
           )}
+
           <footer className="px-6 w-full">
             <ButtonComponent
               type="submit"
@@ -549,6 +483,7 @@ const CreateTrip = ({ loaderData }: Route.ComponentProps) => {
                   loading ? "loader.svg" : "magic-star.svg"
                 }`}
                 className={cn("size-5", { "animate-spin": loading })}
+                alt={loading ? "Loading" : "Magic star"}
               />
               <span className="p-16-semibold text-white">
                 {loading ? "Generating..." : "Generate Trip"}
