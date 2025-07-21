@@ -12,7 +12,7 @@ export async function clientLoader() {
     const existingUser = await getExistingUser(user.$id);
     return existingUser?.$id ? existingUser : await storeUserData();
   } catch (e) {
-    console.log("Error fetching user", e);
+    console.error("Error fetching user", e);
     return redirect("/sign-in");
   }
 }

@@ -49,8 +49,6 @@ const TripDetail = ({ loaderData }: Route.ComponentProps) => {
   } = tripData || {};
   const allTrips = loaderData.allTrips as Trip[] | [];
 
-  console.log(tripData);
-
   const pillItems = [
     { text: travelStyle, bg: "!bg-pink-50 !text-pink-500" },
     { text: groupType, bg: "!bg-primary-50 !text-primary-500" },

@@ -8,7 +8,7 @@ import {
   getUsersAndTripsStats,
 } from "~/appwrite/dashboard";
 import { getAllTrips } from "~/appwrite/trips";
-import { parseTripData } from "~/lib/utils";
+import { capitalizeWords, parseTripData } from "~/lib/utils";
 import {
   Category,
   ChartComponent,
@@ -92,12 +92,10 @@ const Dashboard = ({ loaderData }: Route.ComponentProps) => {
     },
   ];
 
-  console.log(allTrips);
-
   return (
     <main className="dashboard wrapper">
       <Header
-        title={`Welcome ${user?.name ?? "Guest"} 👋`}
+        title={`Welcome ${capitalizeWords(user?.name) ?? "Guest"} 👋`}
         description="Track activity, trends and popular destinations in real time"
       />
 
@@ -233,7 +231,9 @@ const Dashboard = ({ loaderData }: Route.ComponentProps) => {
                         className="rounded-full size-8 aspect-square"
                         referrerPolicy="no-referrer"
                       />
-                      <span>{props.name}</span>
+                      <span className="truncate">
+                        {capitalizeWords(props.name)}
+                      </span>
                     </div>
                   )}
                 />

@@ -5,7 +5,6 @@ import { Header, TripCard } from "../../../components";
 import { getAllTrips } from "~/appwrite/trips";
 import type { Route } from "../../../.react-router/types/app/routes/admin/+types/trips";
 import { useState } from "react";
-import { getUser } from "~/appwrite/auth";
 import { PagerComponent } from "@syncfusion/ej2-react-grids";
 
 const FeaturedDestination = ({
@@ -70,10 +69,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const page = parseInt(url.searchParams.get("page") || "1", 10);
   const offset = (page - 1) * limit;
 
-  const [user, { allTrips, total }] = await Promise.all([
-    getUser(),
-    getAllTrips(limit, offset),
-  ]);
+  const { allTrips, total } = await getAllTrips(limit, offset);
 
   return {
     trips: allTrips.map(({ $id, tripDetails, imageUrls }) => ({
